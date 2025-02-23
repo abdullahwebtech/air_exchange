@@ -1,158 +1,112 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors'); // Add CORS support
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const cors = require("cors");
 
 const app = express();
-app.use(cors()); // Enable CORS
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*", // Allow all origins (you can restrict this to your frontend URL)
-    methods: ["GET", "POST", "DELETE"]
-  }
-});
+app.use(cors());
+app.use(express.json());
 
-// Uploads folder setup
-const uploadDir = path.join(__dirname, 'uploads');
+// ✅ Ensure Uploads Folder Exists (⚠️ Vercel does not persist storage)
+const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// File storage configuration
+// ✅ Multer Storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
 const upload = multer({ storage });
 
-// Global state
-let globalText = '';
+// ✅ Global State (⚠️ Not Persistent in Vercel)
+let globalText = "";
 let files = [];
 
-// Socket.io connection
-io.on('connection', (socket) => {
-  console.log('✅ New connection:', socket.id);
-  
-  // Send initial data
-  socket.emit('init', { text: globalText, files });
-  
-  // Handle text updates
-  socket.on('textUpdate', (text) => {
-    globalText = text;
-    socket.broadcast.emit('textUpdate', text); // Broadcast to all clients
-  });
-
-  // Handle file deletions
-  socket.on('deleteFile', (filename) => {
-    files = files.filter(file => file.filename !== filename);
-    io.emit('fileDeleted', filename); // Notify all clients
-  });
-
-  // Handle all files deletion
-  socket.on('deleteAllFiles', () => {
-    files = [];
-    io.emit('allFilesDeleted'); // Notify all clients
-  });
-
-  // Handle clear text
-  socket.on('clearText', () => {
-    globalText = '';
-    io.emit('textUpdate', ''); // Notify all clients to clear text
-  });
-
-  // Cleanup
-  socket.on('disconnect', () => {
-    console.log('❌ Connection closed:', socket.id);
-  });
-});
-
-// File upload endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
+// ✅ Upload File Endpoint
+app.post("/upload", upload.single("file"), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     const fileData = {
       filename: req.file.filename,
       originalname: req.file.originalname,
       timestamp: Date.now(),
-      url: `https://air-exchange.vercel.app/uploads/${req.file.filename}` // Update URL here
+      url: `https://${process.env.VERCEL_URL}/uploads/${req.file.filename}`, // ✅ Dynamic URL Fix
     };
-    
+
     files.push(fileData);
-    io.emit('newFile', fileData); // Notify all clients
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, file: fileData });
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error("Upload error:", error);
+    res.status(500).json({ error: "Upload failed" });
   }
 });
 
-// File download endpoint
-app.get('/download/:filename', (req, res) => {
+// ✅ File Download Endpoint
+app.get("/download/:filename", (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadDir, filename);
 
-  // Check if file exists
   if (fs.existsSync(filePath)) {
-    // Set Content-Disposition header to force download
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.sendFile(filePath);
+    res.download(filePath);
   } else {
-    res.status(404).json({ error: 'File not found' });
+    res.status(404).json({ error: "File not found" });
   }
 });
 
-// Delete all files endpoint
-app.delete('/delete-all', (req, res) => {
+// ✅ Serve Static Files (⚠️ Vercel Temporary Storage Issue)
+app.use("/uploads", express.static(uploadDir));
+
+// ✅ Delete All Files
+app.delete("/delete-all", (req, res) => {
   try {
-    // Delete all files from the filesystem
-    files.forEach(file => {
-      fs.unlinkSync(path.join(uploadDir, file.filename));
+    files.forEach((file) => {
+      const filePath = path.join(uploadDir, file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     });
+
     files = [];
-    io.emit('allFilesDeleted'); // Notify all clients
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Delete all error:', error);
-    res.status(500).json({ error: 'Delete all failed' });
+    console.error("Delete all error:", error);
+    res.status(500).json({ error: "Delete all failed" });
   }
 });
 
-// Delete single file endpoint
-app.delete('/delete-file/:filename', (req, res) => {
+// ✅ Delete a Single File
+app.delete("/delete-file/:filename", (req, res) => {
   try {
     const filename = req.params.filename;
-    // Delete file from filesystem
-    fs.unlinkSync(path.join(uploadDir, filename));
-    // Remove file from the array
-    files = files.filter(file => file.filename !== filename);
-    io.emit('fileDeleted', filename); // Notify all clients
-    res.status(200).json({ success: true });
+    const filePath = path.join(uploadDir, filename);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      files = files.filter((file) => file.filename !== filename);
+      res.status(200).json({ success: true });
+    } else {
+      res.status(404).json({ error: "File not found" });
+    }
   } catch (error) {
-    console.error('Delete file error:', error);
-    res.status(500).json({ error: 'Delete file failed' });
+    console.error("Delete file error:", error);
+    res.status(500).json({ error: "Delete file failed" });
   }
 });
 
-// Auto-clean files every 30 minutes
+// ✅ Auto-Cleanup Files Every 30 Minutes
 setInterval(() => {
   const now = Date.now();
-  files.forEach((file, index) => {
+  files = files.filter((file) => {
     if (now - file.timestamp > 1800000) {
-      fs.unlink(path.join(uploadDir, file.filename), () => {});
-      files.splice(index, 1);
+      const filePath = path.join(uploadDir, file.filename);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return false;
     }
+    return true;
   });
 }, 1800000);
 
-// Serve static files
-app.use('/uploads', express.static(uploadDir)); // Serve uploaded files
-app.use(express.static(path.join(__dirname, 'public'))); // Serve frontend files
-
+// ✅ **Export Only `app` (Vercel Fix)**
 module.exports = app;
