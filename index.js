@@ -159,7 +159,8 @@ app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Start server
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Render ke liye dynamic port use karega
+
 server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
