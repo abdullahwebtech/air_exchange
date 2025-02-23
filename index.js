@@ -81,7 +81,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
       filename: req.file.filename,
       originalname: req.file.originalname,
       timestamp: Date.now(),
-      url: `http://localhost:3000/uploads/${req.file.filename}` // Update URL here
+      url: `https://air-exchange.vercel.app/uploads/${req.file.filename}` // Update URL here
     };
     
     files.push(fileData);

@@ -11,7 +11,7 @@
             --background-color: #f5f5f5;
             --text-color: #000;
             --primary-color: #007bff;
-            --primary-dark-color: #0056b3;
+            --primary-dark-color: #030507;
             --border-color: #007bff;
             --file-item-bg: #fff;
             --file-item-shadow: rgba(0,0,0,0.1);
@@ -253,9 +253,9 @@
         <i class="fas fa-moon"></i>
     </button>
 
-    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="https://air-exchange.vercel.app/socket.io/socket.io.js"></script>
     <script>
-        const socket = io('http://localhost:3000');
+        const socket = io('https://air-exchange.vercel.app');
         const textEditor = document.querySelector('.text-editor');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
@@ -314,14 +314,14 @@
             fileList.innerHTML = files.map(file => {
                 const isImage = file.originalname.match(/\.(jpg|jpeg|png|gif)$/i);
                 const preview = isImage ? 
-                    `<img src="http://localhost:3000/uploads/${file.filename}" class="file-preview">` : 
+                    `<img src="https://air-exchange.vercel.app/uploads/${file.filename}" class="file-preview">` : 
                     `<div class="file-icon">📄</div>`;
 
                 return `
                     <li class="file-item">
                         ${preview}
                         <div class="file-info">
-                            <a href="http://localhost:3000/uploads/${file.filename}" 
+                            <a href="https://air-exchange.vercel.app/uploads/${file.filename}" 
                                class="file-link" 
                                download="${file.originalname}">
                                 ${file.originalname}
@@ -329,7 +329,7 @@
                             <small>${new Date(file.timestamp).toLocaleTimeString()}</small>
                         </div>
                         <div class="file-actions-icons">
-                            <a href="http://localhost:3000/uploads/${file.filename}" download 
+                            <a href="https://air-exchange.vercel.app/uploads/${file.filename}" download 
                                class="file-action-btn" title="Download">
                                 ⬇️
                             </a>
