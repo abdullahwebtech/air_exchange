@@ -155,6 +155,6 @@ setInterval(() => {
 app.use('/uploads', express.static(uploadDir)); // Serve uploaded files
 app.use(express.static(path.join(__dirname, 'public'))); // Serve frontend files
 
-server.listen(3000, '0.0.0.0', () => {
+server.listen(3000, () => {
   console.log('🚀 Server running on http://localhost:3000');
 });
