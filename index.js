@@ -155,7 +155,4 @@ setInterval(() => {
 app.use('/uploads', express.static(uploadDir)); // Serve uploaded files
 app.use(express.static(path.join(__dirname, 'public'))); // Serve frontend files
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+module.exports = app;
