@@ -3,297 +3,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AirForShare</title>
+    <title>AirXchange</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --background-color: #f5f5f5;
-            --text-color: #000;
-            --primary-color: #007bff;
-            --primary-dark-color: #030507;
-            --border-color: #007bff;
-            --file-item-bg: #fff;
-            --file-item-shadow: rgba(0,0,0,0.1);
+            --airxchange-bg: #f0f4f8;
+            --airxchange-text: #333;
+            --airxchange-primary: #1e90ff;
+            --airxchange-primary-dark: #1c6ea4;
+            --airxchange-border: #1e90ff;
+            --airxchange-card-bg: #fff;
+            --airxchange-shadow: rgba(0,0,0,0.15);
+            --airxchange-success: #28a745; /* Green for additions */
+            --airxchange-error: #dc3545;   /* Red for deletions */
+            --airxchange-accent: #ff6f61;
         }
-
-        [data-theme="dark"] {
-            --background-color: #121212;
-            --text-color: #fff;
-            --primary-color: #1e90ff;
-            --primary-dark-color: #0077cc;
-            --border-color: #1e90ff;
-            --file-item-bg: #1e1e1e;
-            --file-item-shadow: rgba(255,255,255,0.1);
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; color: var(--airxchange-text); }
+        body { background-color: var(--airxchange-bg); }
+        .airxchange-container { 
+            max-width: 900px; margin: 20px auto; padding: 20px; 
+            background: var(--airxchange-bg); border-radius: 15px; 
+            box-shadow: 0 4px 12px var(--airxchange-shadow); 
+            animation: airxchange-fadeIn 0.5s ease-in; 
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-            color: var(--text-color);
+        .airxchange-tabs { 
+            display: flex; margin-bottom: 20px; gap: 10px; 
+            justify-content: center; 
         }
-
-        body {
-            background-color: var(--background-color);
+        .airxchange-tab { 
+            flex: 1; padding: 12px; text-align: center; 
+            background: var(--airxchange-primary); color: white; 
+            border-radius: 8px; cursor: pointer; transition: all 0.3s ease; 
         }
-
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background: var(--background-color);
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .airxchange-tab:hover { background: var(--airxchange-primary-dark); transform: scale(1.05); }
+        .airxchange-tab.active { background: var(--airxchange-primary-dark); transform: scale(1.02); }
+        .airxchange-tab-content { display: none; }
+        .airxchange-tab-content.active { display: block; animation: airxchange-slideIn 0.3s ease; }
+        .airxchange-text-editor { 
+            width: 100%; min-height: 250px; padding: 15px; 
+            border: 2px solid var(--airxchange-border); border-radius: 10px; 
+            resize: none; font-size: 16px; margin-bottom: 15px; 
+            background-color: var(--airxchange-card-bg); 
+            transition: border-color 0.3s ease, opacity 0.5s ease; 
+            position: relative; 
         }
-
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            gap: 5px;
+        .airxchange-text-editor:focus { border-color: var(--airxchange-primary-dark); outline: none; }
+        .airxchange-text-editor.fade-out { opacity: 0; }
+        .airxchange-cursor { 
+            position: absolute; height: 2px; background: var(--airxchange-primary); 
+            width: 2px; transform: translateY(-50%); transition: all 0.1s ease; 
         }
-
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
+        .airxchange-file-upload-section { 
+            border: 2px dashed var(--airxchange-border); padding: 30px; 
+            text-align: center; border-radius: 10px; margin-top: 20px; 
+            background: rgba(30, 144, 255, 0.05); transition: all 0.3s ease; 
         }
-
-        .tab.active {
-            background: var(--primary-dark-color);
+        .airxchange-file-upload-section.dragover { background: rgba(30, 144, 255, 0.15); transform: scale(1.02); }
+        .airxchange-file-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
+            gap: 15px; padding: 0; margin-bottom: 20px; 
         }
-
-        .tab-content {
-            display: none;
+        .airxchange-file-card { 
+            padding: 10px; background: var(--airxchange-card-bg); 
+            border-radius: 10px; box-shadow: 0 3px 8px var(--airxchange-shadow); 
+            text-align: center; transition: transform 0.2s ease; 
+            cursor: pointer; 
         }
-
-        .tab-content.active {
-            display: block;
+        .airxchange-file-card:hover { transform: translateY(-5px); }
+        .airxchange-file-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin: 0 auto 10px; }
+        .airxchange-file-icon { font-size: 24px; margin: 10px auto; color: white; }
+        .airxchange-file-info { font-size: 14px; overflow: hidden; }
+        .airxchange-file-link { 
+            color: var(--airxchange-primary); text-decoration: none; 
+            display: block; overflow: hidden; text-overflow: ellipsis; 
+            white-space: nowrap; 
         }
-
-        .text-editor {
-            width: 100%;
-            min-height: 200px;
-            padding: 15px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            resize: none;
-            font-size: 16px;
-            margin-bottom: 15px;
-            background-color: var(--background-color);
-            color: var(--text-color);
+        .airxchange-btn { 
+            padding: 8px 15px; border: none; border-radius: 6px; 
+            cursor: pointer; background: var(--airxchange-primary); 
+            color: white; margin: 5px 0; transition: all 0.3s ease; 
+            font-size: 14px; 
         }
-
-        .file-upload-section {
-            border: 2px dashed var(--border-color);
-            padding: 25px;
-            text-align: center;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        .airxchange-btn:hover { background: var(--airxchange-primary-dark); transform: scale(1.05); }
+        .airxchange-file-actions { display: flex; gap: 10px; justify-content: flex-start; margin-bottom: 15px; }
+        .airxchange-file-actions .airxchange-btn { background: #dc3545; }
+        .airxchange-file-actions .airxchange-btn.airxchange-download-all { background: var(--airxchange-success); }
+        .airxchange-add-file-card { 
+            padding: 10px; background: var(--airxchange-card-bg); 
+            border-radius: 10px; box-shadow: 0 3px 8px var(--airxchange-shadow); 
+            text-align: center; transition: transform 0.2s ease; 
+            cursor: pointer; 
         }
-
-        .file-list {
-            list-style: none;
-            padding: 0;
+        .airxchange-add-file-card:hover { transform: translateY(-5px); }
+        .airxchange-add-file-icon { font-size: 24px; margin: 10px auto; color: white; }
+        .airxchange-add-file-text { font-size: 14px; color: var(--airxchange-primary); }
+        .airxchange-file-actions-icons { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+        .airxchange-file-action-btn { cursor: pointer; padding: 5px; font-size: 18px; transition: opacity 0.2s; color: white; }
+        .airxchange-file-action-btn:hover { opacity: 0.7; }
+        .airxchange-progress-container { margin-top: 10px; }
+        .airxchange-progress-bar { 
+            width: 100%; height: 10px; background: #ddd; border-radius: 5px; 
+            overflow: hidden; display: none; 
         }
-
-        .file-item {
-            padding: 10px;
-            background: var(--file-item-bg);
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px var(--file-item-shadow);
-            display: flex;
-            align-items: center;
+        .airxchange-progress-fill { 
+            height: 100%; background: var(--airxchange-primary); 
+            width: 0; transition: width 0.3s ease; 
         }
-
-        .file-preview {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-right: 15px;
+        .airxchange-progress-text { font-size: 14px; text-align: center; margin: 5px 0; }
+        .airxchange-success-tick { 
+            font-size: 24px; color: var(--airxchange-success); 
+            display: none; animation: airxchange-bounceIn 0.5s ease; 
+            margin: 5px auto; 
         }
-
-        .file-icon {
-            font-size: 24px;
-            margin-right: 15px;
+        .airxchange-expiry-section { 
+            text-align: center; margin-bottom: 20px; 
+            display: flex; justify-content: center; gap: 15px; align-items: center; 
+            flex-wrap: wrap; 
         }
-
-        .file-info {
-            flex: 1;
-            overflow: hidden;
+        .airxchange-expiry-wrapper { display: flex; align-items: center; gap: 10px; }
+        .airxchange-expiry-select { 
+            padding: 10px 30px 10px 15px; font-size: 14px; 
+            border: 2px solid var(--airxchange-border); border-radius: 25px; 
+            background: var(--airxchange-card-bg); cursor: pointer; 
+            appearance: none; transition: all 0.3s ease; 
+            box-shadow: 0 2px 5px var(--airxchange-shadow); 
         }
-
-        .file-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            display: block;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .airxchange-expiry-select:hover { border-color: var(--airxchange-primary-dark); }
+        .airxchange-expiry-select:focus { outline: none; border-color: var(--airxchange-accent); }
+        .airxchange-expiry-wrapper::after { 
+            content: "▼"; position: absolute; right: 10px; top: 50%; 
+            transform: translateY(-50%); pointer-events: none; 
+            color: var(--airxchange-primary); 
         }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            background: var(--primary-color);
-            color: white;
-            margin: 5px;
+        .airxchange-expiry-custom-input { 
+            padding: 8px; font-size: 14px; border: 2px solid var(--airxchange-border); 
+            border-radius: 5px; width: 100px; display: none; 
         }
-
-        .file-actions {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+        .airxchange-expiry-reset-btn { 
+            background: var(--airxchange-accent); padding: 8px 15px; 
+            border-radius: 20px; border: none; cursor: pointer; 
+            transition: all 0.3s ease; font-size: 14px; 
+            box-shadow: 0 2px 5px var(--airxchange-shadow); 
         }
-
-        .file-actions .btn {
-            background: #dc3545;
+        .airxchange-expiry-reset-btn:hover { background: #e65b4d; transform: scale(1.05); }
+        .airxchange-modal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.5); z-index: 1000; 
+            justify-content: center; align-items: center; 
         }
-
-        .file-actions .btn.download-all {
-            background: #28a745;
+        .airxchange-modal-content { 
+            background: var(--airxchange-card-bg); padding: 20px; border-radius: 10px; 
+            box-shadow: 0 4px 12px var(--airxchange-shadow); max-width: 80%; max-height: 80%; 
+            overflow: auto; position: relative; 
         }
-
-        .file-actions-icons {
-            display: flex;
-            gap: 10px;
-            margin-left: auto;
+        .airxclose { 
+            position: absolute; top: 10px; right: 10px; font-size: 24px; 
+            cursor: pointer; color: white; 
+            transition: color 0.3s ease; 
         }
-
-        .file-action-btn {
-            cursor: pointer;
-            padding: 5px;
-            transition: 0.2s;
+        .airxclose:hover { color: var(--airxchange-primary); }
+        .airxchange-notification { 
+            position: fixed; bottom: 20px; right: 20px; /* Bottom-right position */
+            padding: 10px 20px; border-radius: 5px; 
+            box-shadow: 0 2px 5px var(--airxchange-shadow); 
+            animation: airxchange-notification 3s ease-out; display: none; z-index: 1001; 
         }
-
-        .file-action-btn:hover {
-            opacity: 0.8;
+        .airxchange-notification.add { background: var(--airxchange-success); color: white; } /* Green for additions */
+        .airxchange-notification.remove { background: var(--airxchange-error); color: white; } /* Red for deletions */
+        @keyframes airxchange-notification { 
+            0% { opacity: 0; transform: translateY(20px); } 
+            10% { opacity: 1; transform: translateY(0); } 
+            90% { opacity: 1; transform: translateY(0); } 
+            100% { opacity: 0; transform: translateY(20px); } 
         }
-
-        .theme-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 10px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        @keyframes airxchange-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes airxchange-slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes airxchange-bounceIn { 
+            0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } 
         }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                padding: 15px;
-            }
+        @keyframes airxchange-fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes airxchange-pulse { 
+            0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } 
+        }
+        @media (max-width: 768px) { 
+            .airxchange-container { margin: 10px; padding: 15px; } 
+            .airxchange-file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } 
+            .airxchange-expiry-section { flex-direction: column; gap: 10px; }
+            .airxchange-expiry-select { width: 100%; max-width: 200px; }
+            .airxchange-expiry-custom-input { width: 100%; max-width: 120px; }
+            .airxchange-expiry-reset-btn { width: 100%; max-width: 120px; }
+            .airxchange-modal-content { max-width: 90%; max-height: 90%; }
+            .airxchange-file-actions { flex-direction: row; justify-content: flex-start; gap: 5px; } /* Horizontal on mobile */
+            .airxchange-btn { width: auto; max-width: 150px; }
+            .airxchange-notification { bottom: 10px; right: 10px; padding: 8px 15px; font-size: 12px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 style="text-align: center; margin-bottom: 20px;">AirXchange 🚀 </h1>
+    <div class="airxchange-container">
+        <h1 style="text-align: center; margin-bottom: 10px;">AirXchange <i class="fas fa-rocket" style="color: var(--airxchange-primary); font-size: 20px;"></i></h1>
+        <div class="airxchange-expiry-section">
+            <label>Data expires in:</label>
+            <div class="airxchange-expiry-wrapper">
+                <select id="airxchange-expiry" class="airxchange-expiry-select" onchange="handleExpiryChange()">
+                    <option value="1800000">30 Minutes</option>
+                    <option value="3600000">1 Hour</option>
+                    <option value="5400000">1.5 Hours</option>
+                    <option value="7200000">2 Hours</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <input type="number" id="airxchange-customInput" class="airxchange-expiry-custom-input" 
+                       placeholder="Minutes" min="1" onchange="setCustomExpiry()">
+                <button class="airxchange-expiry-reset-btn" onclick="resetExpiry()"><i class="fas fa-undo"></i> Reset</button>
+            </div>
+        </div>
         
-        <!-- Tabs -->
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('text')">📝 Text</div>
-            <div class="tab" onclick="switchTab('file')">📁 Files</div>
+        <div class="airxchange-tabs">
+            <div class="airxchange-tab active" onclick="switchTab('text')"><i class="fas fa-file-alt"></i> Text</div>
+            <div class="airxchange-tab" onclick="switchTab('file')"><i class="fas fa-folder"></i> Files</div>
         </div>
 
-        <!-- Text Tab -->
-        <div id="textTab" class="tab-content active">
-            <textarea 
-                class="text-editor" 
-                placeholder="Start typing..."
-                oninput="handleTextInput()"
-            ></textarea>
+        <div id="airxchange-textTab" class="airxchange-tab-content active">
+            <textarea class="airxchange-text-editor" placeholder="Start typing..." oninput="handleTextInput()"></textarea>
             <div style="text-align: center">
-                <button class="btn" onclick="saveText()"><i class="fas fa-save"></i> Save</button>
-                <button class="btn" onclick="clearText()"><i class="fas fa-trash"></i> Clear</button>
-                <button class="btn" onclick="copyText()"><i class="far fa-copy"></i> Copy</button>
+                <button class="airxchange-btn" onclick="saveText()"><i class="fas fa-save"></i> Save</button>
+                <button class="airxchange-btn" onclick="clearText()"><i class="fas fa-trash"></i> Clear</button>
+                <button class="airxchange-btn" onclick="copyText()"><i class="far fa-copy"></i> Copy</button>
             </div>
         </div>
 
-        <!-- File Tab -->
-        <div id="fileTab" class="tab-content">
-            <div class="file-actions">
-                <button class="btn download-all" onclick="downloadAllFiles()">
+        <div id="airxchange-fileTab" class="airxchange-tab-content">
+            <div class="airxchange-file-actions">
+                <button class="airxchange-btn airxchange-download-all" onclick="downloadAllFiles()">
                     <i class="fas fa-download"></i> Download All
                 </button>
-                <button class="btn" onclick="deleteAllFiles()">
+                <button class="airxchange-btn" onclick="deleteAllFiles()">
                     <i class="fas fa-trash"></i> Delete All
                 </button>
             </div>
-            <div class="file-upload-section" id="dropZone">
-                <p>📂 Drag & drop files here</p>
-                <input type="file" id="fileInput" hidden>
-                <button class="btn" onclick="document.getElementById('fileInput').click()">
-                    <i class="fas fa-upload"></i> Choose File
+            <div class="airxchange-file-grid" id="airxchange-fileGrid"></div>
+            <div class="airxchange-file-upload-section" id="airxchange-dropZone">
+                <p><i class="fas fa-cloud-upload-alt"></i> Drag & drop files or click to upload multiple files</p>
+                <input type="file" id="airxchange-fileInput" multiple hidden>
+                <button class="airxchange-btn" onclick="document.getElementById('airxchange-fileInput').click()">
+                    <i class="fas fa-upload"></i> Choose Files
                 </button>
+                <div id="airxchange-progressContainer" class="airxchange-progress-container"></div>
+                <div id="airxchange-downloadProgress" class="airxchange-progress-container" style="display: none;">
+                    <div class="airxchange-progress-text" id="airxchange-downloadProgressText">Downloading... 0%</div>
+                    <div class="airxchange-progress-bar">
+                        <div class="airxchange-progress-fill" id="airxchange-downloadProgressFill"></div>
+                    </div>
+                </div>
             </div>
-            <ul class="file-list" id="fileList"></ul>
         </div>
     </div>
 
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <i class="fas fa-moon"></i>
-    </button>
+    <div class="airxchange-modal" id="airxchange-fileModal">
+        <div class="airxchange-modal-content">
+            <span class="airxclose" onclick="closeModal()"><i class="fas fa-times"></i></span>
+            <div id="airxchange-modalContent"></div>
+        </div>
+    </div>
+
+    <div class="airxchange-notification" id="airxchange-notification"></div>
 
     <script src="https://air-exchange.onrender.com/socket.io/socket.io.js"></script>
     <script>
         const socket = io('https://air-exchange.onrender.com');
-        const textEditor = document.querySelector('.text-editor');
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
+        const textEditor = document.querySelector('.airxchange-text-editor');
+        const fileInput = document.getElementById('airxchange-fileInput');
+        const fileGrid = document.getElementById('airxchange-fileGrid');
+        const dropZone = document.getElementById('airxchange-dropZone');
+        const progressContainer = document.getElementById('airxchange-progressContainer');
+        const downloadProgress = document.getElementById('airxchange-downloadProgress');
+        const downloadProgressText = document.getElementById('airxchange-downloadProgressText');
+        const downloadProgressFill = document.getElementById('airxchange-downloadProgressFill');
+        const expirySelect = document.getElementById('airxchange-expiry');
+        const customInput = document.getElementById('airxchange-customInput');
+        const resetBtn = document.querySelector('.airxchange-expiry-reset-btn');
+        const fileModal = document.getElementById('airxchange-fileModal');
+        const modalContent = document.getElementById('airxchange-modalContent');
+        const notification = document.getElementById('airxchange-notification');
         let files = [];
+        let roomId = null;
+        let expiryTime = 1800000; // Default 30 minutes in ms
+        let cursors = new Map(); // Track cursors by socket.id
 
-        // Initialize real-time text
+        // WebRTC setup
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const peerConnection = new RTCPeerConnection(rtcConfig);
+
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                const candidate = event.candidate.candidate;
+                const localIpMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                if (localIpMatch) {
+                    const localIp = localIpMatch[1];
+                    roomId = localIp.split('.').slice(0, 3).join('.');
+                    socket.emit('joinRoom', roomId);
+                    console.log(`Joined room based on local IP: ${roomId}`);
+                }
+            }
+        };
+
+        peerConnection.createDataChannel('discovery');
+        peerConnection.createOffer()
+            .then(offer => peerConnection.setLocalDescription(offer))
+            .catch(err => console.error('WebRTC error:', err));
+
         socket.on('init', (data) => {
-            textEditor.value = data.text;
+            textEditor.value = data.text; // Restore plain text
             files = data.files;
-            updateFileList(files);
+            expiryTime = data.expiry || 1800000; // Sync expiry from server
+            updateExpiryUI();
+            updateFileGrid();
+            updateAddNewCard(); // Update "Add New" card position
         });
 
-        // Real-time text updates
         socket.on('textUpdate', (text) => {
-            textEditor.value = text;
+            textEditor.value = text; // Sync plain text
+            textEditor.classList.remove('fade-out'); // Reset fade if updated
+            updateCursors(); // Update cursor positions after text changes
         });
 
-        // Real-time file updates
         socket.on('newFile', (file) => {
             files.push(file);
-            updateFileList(files);
+            updateFileGrid();
+            showNotification(`New file uploaded: ${file.originalname}`, 'add');
+            updateAddNewCard(); // Update "Add New" card position
         });
 
-        // Handle file deletions
         socket.on('fileDeleted', (filename) => {
             files = files.filter(file => file.filename !== filename);
-            updateFileList(files);
+            updateFileGrid();
+            showNotification(`File deleted: ${filename}`, 'remove');
+            updateAddNewCard(); // Update "Add New" card position
         });
 
-        // Handle all files deletion
         socket.on('allFilesDeleted', () => {
             files = [];
-            updateFileList(files);
+            updateFileGrid();
+            showNotification('All files deleted', 'remove');
+            updateAddNewCard(); // Update "Add New" card position
         });
 
-        // Text handling
+        socket.on('clearText', () => {
+            textEditor.classList.add('fade-out');
+            setTimeout(() => {
+                textEditor.value = '';
+                textEditor.classList.remove('fade-out');
+                updateCursors(); // Clear cursors after text reset
+            }, 500); // Match CSS transition duration
+        });
+
+        socket.on('expiryUpdate', (newExpiry) => {
+            expiryTime = newExpiry;
+            updateExpiryUI();
+        });
+
+        socket.on('cursorUpdate', ({ id, position }) => {
+            cursors.set(id, position);
+            updateCursors();
+        });
+
         function handleTextInput() {
-            socket.emit('textUpdate', textEditor.value);
+            if (!roomId) return;
+            socket.emit('textUpdate', textEditor.value); // Emit plain text
+            socket.emit('cursorUpdate', getCursorPosition());
         }
 
         function saveText() {
@@ -301,170 +379,389 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `airforshare-${Date.now()}.txt`;
+            a.download = `airxchange-${Date.now()}.txt`;
             a.click();
         }
 
         function clearText() {
-            if(confirm('Clear all text?')) textEditor.value = '';
+            if (!roomId) return;
+            if (confirm('Clear all text?')) {
+                textEditor.classList.add('fade-out');
+                setTimeout(() => {
+                    textEditor.value = '';
+                    textEditor.classList.remove('fade-out');
+                    socket.emit('clearText');
+                    cursors.clear(); // Clear all cursors on clear
+                    updateCursors();
+                }, 500); // Match CSS transition duration
+            }
         }
 
-        // File handling
-        function updateFileList(files) {
-            fileList.innerHTML = files.map(file => {
-                const isImage = file.originalname.match(/\.(jpg|jpeg|png|gif)$/i);
-                const preview = isImage ? 
-                    `<img src="https://air-exchange.onrender.com/uploads/${file.filename}" class="file-preview">` : 
-                    `<div class="file-icon">📄</div>`;
+        function copyText() {
+            textEditor.select();
+            document.execCommand('copy');
+            alert('Text copied to clipboard!');
+        }
 
-                return `
-                    <li class="file-item">
+        function getFileIcon(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+            const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'heif', 'heic', 'raw', 'psd', 'eps', 'ai', 'ico', 'avif', 'dng', 'cr2', 'nef', 'orf'];
+            if (imageExtensions.includes(ext)) return '<img class="airxchange-file-preview" src="https://air-exchange.onrender.com/uploads/' + fileName + '">';
+            if (['xls', 'xlsx'].includes(ext)) return '<i class="fas fa-table" style="color: white;"></i>';
+            if (['doc', 'docx'].includes(ext)) return '<i class="fas fa-file-alt" style="color: white;"></i>';
+            if (['pdf'].includes(ext)) return '<i class="fas fa-file-pdf" style="color: white;"></i>';
+            return '<i class="fas fa-file" style="color: white;"></i>';
+        }
+
+        function updateFileGrid() {
+            fileGrid.innerHTML = '';
+            files.forEach(file => {
+                const preview = getFileIcon(file.filename);
+                fileGrid.innerHTML += `
+                    <div class="airxchange-file-card" onclick="openFileModal('${file.filename}', '${file.originalname}')">
                         ${preview}
-                        <div class="file-info">
+                        <div class="airxchange-file-info">
                             <a href="https://air-exchange.onrender.com/uploads/${file.filename}" 
-                               class="file-link" 
+                               class="airxchange-file-link" 
                                download="${file.originalname}">
                                 ${file.originalname}
                             </a>
                             <small>${new Date(file.timestamp).toLocaleTimeString()}</small>
                         </div>
-                        <div class="file-actions-icons">
-                            <a href="https://air-exchange.onrender.com/uploads/${file.filename}" download 
-                               class="file-action-btn" title="Download">
-                                ⬇️
+                        <div class="airxchange-file-actions-icons">
+                            <a href="https://air-exchange.onrender.com/download/${file.filename}" download 
+                               class="airxchange-file-action-btn" title="Download">
+                                <i class="fas fa-download"></i>
                             </a>
-                            <span class="file-action-btn" title="Delete" 
-                                  onclick="deleteSingleFile('${file.filename}')">
-                                🗑️
+                            <span class="airxchange-file-action-btn" title="Delete" 
+                                  onclick="deleteSingleFile('${file.filename}'); event.stopPropagation();">
+                                <i class="fas fa-trash"></i>
                             </span>
                         </div>
-                    </li>
+                    </div>
                 `;
-            }).join('');
-        }
-
-        // Handle file upload
-        function handleFileUpload(file) {
-            if (!file) return;
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (!data.success) throw new Error('Upload failed');
-            })
-            .catch(err => {
-                alert('File upload failed!');
-                console.error('Upload error:', err);
             });
+            updateAddNewCard(); // Add "Add New" card after files, ensuring no duplication
         }
 
-        // Delete All Files
-        async function deleteAllFiles() {
-            if(!confirm('Delete ALL files permanently?')) return;
-            
-            try {
-                const response = await fetch('/delete-all', { method: 'DELETE' });
-                const data = await response.json();
-                if(data.success) {
-                    files = [];
-                    updateFileList(files);
+        function updateAddNewCard() {
+            // Remove any existing "Add New" card to prevent duplication
+            const existingAddCard = fileGrid.querySelector('.airxchange-add-file-card');
+            if (existingAddCard) {
+                existingAddCard.remove();
+            }
+
+            // Add "Add New" card only if there are files
+            if (files.length > 0) {
+                const addNewCard = `
+                    <div class="airxchange-add-file-card" onclick="document.getElementById('airxchange-fileInput').click()">
+                        <div class="airxchange-add-file-icon"><i class="fas fa-plus" style="color: green;"></i></div>
+                        <div class="airxchange-add-file-text">Add New</div>
+                    </div>
+                `;
+                fileGrid.innerHTML += addNewCard;
+            }
+        }
+        function handleFileUpload(fileList) {
+            if (!roomId) return;
+            if (!fileList || fileList.length === 0) return;
+
+            progressContainer.innerHTML = '';
+            Array.from(fileList).forEach(file => {
+                const fileId = `${file.name}-${Date.now()}`;
+                const progressDiv = document.createElement('div');
+                progressDiv.innerHTML = `
+                    <div class="airxchange-progress-text" id="progressText-${fileId}">${file.name} - Uploading... 0%</div>
+                    <div class="airxchange-progress-bar">
+                        <div class="airxchange-progress-fill" id="progressFill-${fileId}"></div>
+                    </div>
+                    <div class="airxchange-success-tick" id="successTick-${fileId}"><i class="fas fa-check"></i></div>
+                `;
+                progressContainer.appendChild(progressDiv);
+
+                const progressText = document.getElementById(`progressText-${fileId}`);
+                const progressFill = document.getElementById(`progressFill-${fileId}`);
+                const successTick = document.getElementById(`successTick-${fileId}`);
+
+                const formData = new FormData();
+                formData.append('file', file);
+                const fileSizeMB = file.size / (1024 * 1024);
+
+                if (fileSizeMB > 5) {
+                    progressText.textContent += ' (Larger files may take some time, please be patient 😊)';
                 }
-            } catch(err) {
-                alert('Failed to delete files');
-            }
-        }
 
-        // Download All Files
-        async function downloadAllFiles() {
-            if(files.length === 0) return alert('No files to download!');
-            
-            const zip = new JSZip();
-            const folder = zip.folder("AirForShare_Files");
-            
-            // Add files to zip
-            for(const file of files) {
-                const response = await fetch(`/uploads/${file.filename}`);
-                const blob = await response.blob();
-                folder.file(file.originalname, blob);
-            }
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://air-exchange.onrender.com/upload', true);
+                xhr.setRequestHeader('X-Room-Id', roomId);
 
-            // Generate and download zip
-            zip.generateAsync({type:"blob"}).then(content => {
-                const url = URL.createObjectURL(content);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `AirForShare_Files_${Date.now()}.zip`;
-                a.click();
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        progressFill.style.width = `${percent}%`;
+                        progressText.textContent = `${file.name} - Uploading... ${percent}%${fileSizeMB > 5 ? ' (Please be patient 😊)' : ''}`;
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const data = JSON.parse(xhr.responseText);
+                        if (data.success) {
+                            progressText.textContent = `${file.name} - Uploaded!`;
+                            successTick.style.display = 'block';
+                            setTimeout(() => {
+                                progressDiv.remove();
+                            }, 2000);
+                        } else {
+                            throw new Error(data.error);
+                        }
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                };
+
+                xhr.onerror = () => {
+                    alert(`Upload failed for ${file.name} due to a network error.`);
+                    progressDiv.remove();
+                };
+
+                xhr.send(formData);
             });
         }
 
-        // Delete Single File
-        async function deleteSingleFile(filename) {
-            if(!confirm('Delete this file permanently?')) return;
+        async function deleteAllFiles() {
+            if (!roomId) return;
+            if (!confirm('Delete ALL files permanently?')) return;
             
             try {
-                const response = await fetch(`/delete-file/${filename}`, { 
-                    method: 'DELETE' 
+                const response = await fetch('https://air-exchange.onrender.com/delete-all', {
+                    method: 'DELETE',
+                    headers: { 'X-Room-Id': roomId }
                 });
                 const data = await response.json();
-                if(data.success) {
-                    files = files.filter(f => f.filename !== filename);
-                    updateFileList(files);
+                if (data.success) {
+                    files = [];
+                    updateFileGrid();
+                } else {
+                    throw new Error(data.error);
                 }
-            } catch(err) {
-                alert('Failed to delete file');
+            } catch (err) {
+                alert('Failed to delete files: ' + err.message);
             }
         }
 
-        // Drag & drop
-        document.getElementById('dropZone').addEventListener('dragover', (e) => e.preventDefault());
-        document.getElementById('dropZone').addEventListener('drop', (e) => {
-            e.preventDefault();
-            handleFileUpload(e.dataTransfer.files[0]);
-        });
-        fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
+        async function downloadAllFiles() {
+            if (!roomId || files.length === 0) return alert('No files to download!');
+            
+            downloadProgress.style.display = 'block';
+            downloadProgressText.textContent = 'Downloading... 0%';
+            downloadProgressFill.style.width = '0%';
 
-        // Tab switching
-        function switchTab(tabName) {
-            // Hide all tab content
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            // Show the selected tab content
-            document.getElementById(`${tabName}Tab`).classList.add('active');
+            const zip = new JSZip();
+            const folder = zip.folder("AirXchange_Files");
+            
+            let progress = 0;
+            let totalFiles = files.length;
+            let completedFiles = 0;
 
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-            document.querySelector(`.tab[onclick*="${tabName}"]`).classList.add('active');
+            const processFile = (file, index) => {
+                fetch(file.url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        folder.file(file.originalname, blob);
+                        completedFiles++;
+                        progress = Math.round((completedFiles / totalFiles) * 100);
+                        downloadProgressText.textContent = `Downloading... ${progress}%`;
+                        downloadProgressFill.style.width = `${progress}%`;
+                        if (completedFiles === totalFiles) {
+                            zip.generateAsync({ type: "blob" }).then(content => {
+                                const url = URL.createObjectURL(content);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `AirXchange_Files_${Date.now()}.zip`;
+                                a.click();
+                                downloadProgress.style.display = 'none';
+                                downloadProgressText.textContent = 'Downloading... 0%';
+                                downloadProgressFill.style.width = '0%';
+                            }).catch(err => {
+                                alert('Download failed: ' + err.message);
+                                downloadProgress.style.display = 'none';
+                                downloadProgressText.textContent = 'Downloading... 0%';
+                                downloadProgressFill.style.width = '0%';
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        alert('Download failed for ' + file.originalname + ': ' + err.message);
+                        downloadProgress.style.display = 'none';
+                        downloadProgressText.textContent = 'Downloading... 0%';
+                        downloadProgressFill.style.width = '0%';
+                    });
+            };
+
+            files.forEach((file, index) => processFile(file, index));
         }
 
-        // Theme toggle
-        function toggleTheme() {
-            const body = document.body;
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
+        async function deleteSingleFile(filename) {
+            if (!roomId) return;
+            if (!confirm('Delete this file permanently?')) return;
+            
+            try {
+                const response = await fetch(`https://air-exchange.onrender.com/delete-file/${filename}`, {
+                    method: 'DELETE',
+                    headers: { 'X-Room-Id': roomId }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    files = files.filter(f => f.filename !== filename);
+                    updateFileGrid();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                alert('Failed to delete file: ' + err.message);
+            }
         }
 
-        function updateThemeIcon(theme) {
-            const themeToggle = document.querySelector('.theme-toggle');
-            if (theme === 'dark') {
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        function handleExpiryChange() {
+            const value = expirySelect.value;
+            if (value === 'custom') {
+                customInput.style.display = 'inline-block';
+                customInput.focus();
             } else {
-                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                customInput.style.display = 'none';
+                expiryTime = parseInt(value);
+                if (roomId) {
+                    socket.emit('setExpiry', { roomId, expiryTime });
+                    socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+                }
+            }
+            updateExpiryUI(); // Ensure UI reflects the change
+        }
+        function setCustomExpiry() {
+            const minutes = parseInt(customInput.value) || 0;
+            if (minutes >= 1) {
+                expiryTime = minutes * 60 * 1000;
+                if (roomId) {
+                    socket.emit('setExpiry', { roomId, expiryTime });
+                    socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+                }
+                customInput.style.display = 'none';
+                customInput.value = ''; // Clear input
+            } else {
+                alert('Please enter a valid time (minimum 1 minute)');
+            }
+            updateExpiryUI(); // Ensure UI reflects the change
+        }
+
+        function resetExpiry() {
+            expiryTime = 1800000; // Reset to 30 minutes
+            expirySelect.value = '1800000';
+            customInput.style.display = 'none';
+            customInput.value = '';
+            if (roomId) {
+                socket.emit('setExpiry', { roomId, expiryTime });
+                socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+            }
+            updateExpiryUI(); // Ensure UI reflects the change
+        }
+
+        function updateExpiryUI() {
+            customInput.style.display = expirySelect.value === 'custom' ? 'inline-block' : 'none';
+            if (expirySelect.value === 'custom') {
+                customInput.value = Math.round(expiryTime / 60000) || '';
+            } else {
+                expirySelect.value = [1800000, 3600000, 5400000, 7200000].includes(expiryTime) ? expiryTime.toString() : 'custom';
             }
         }
 
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.body.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
+        function getCursorPosition() {
+            const start = textEditor.selectionStart;
+            const rect = textEditor.getBoundingClientRect();
+            const lineHeight = parseInt(window.getComputedStyle(textEditor).lineHeight) || 20;
+            const line = textEditor.value.substr(0, start).split('\n').length - 1;
+            const charInLine = start - textEditor.value.lastIndexOf('\n', start - 1) - 1;
+            const x = charInLine * 8 + 10; // Approximate character width
+            const y = line * lineHeight + lineHeight / 2;
+            return { x: x + rect.left, y: y + rect.top };
+        }
+
+        function updateCursors() {
+            const cursorsDiv = textEditor.parentElement.querySelectorAll('.airxchange-cursor');
+            cursorsDiv.forEach(cursor => cursor.remove());
+            
+            cursors.forEach((position, id) => {
+                if (id !== socket.id) { // Don't show our own cursor
+                    const cursor = document.createElement('div');
+                    cursor.className = 'airxchange-cursor';
+                    cursor.style.left = `${position.x}px`;
+                    cursor.style.top = `${position.y}px`;
+                    textEditor.parentElement.appendChild(cursor);
+                }
+            });
+        }
+
+        textEditor.addEventListener('mousemove', () => {
+            if (roomId) socket.emit('cursorUpdate', getCursorPosition());
+        });
+
+        function openFileModal(filename, originalname) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'heif', 'heic', 'raw', 'psd', 'eps', 'ai', 'ico', 'avif', 'dng', 'cr2', 'nef', 'orf'];
+            if (imageExtensions.includes(ext)) {
+                modalContent.innerHTML = `<img src="https://air-exchange.onrender.com/uploads/${filename}" style="max-width: 100%; max-height: 80vh;">`;
+            } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                modalContent.innerHTML = `<video controls style="max-width: 100%; max-height: 80vh;"><source src="https://air-exchange.onrender.com/uploads/${filename}" type="video/${ext}">Your browser does not support the video tag.</video>`;
+            } else if (['xls', 'xlsx'].includes(ext)) {
+                modalContent.innerHTML = `<p>Preview not available for ${originalname}. <a href="https://air-exchange.onrender.com/download/${filename}" download><i class="fas fa-download" style="color: white;"></i> Download instead</a>.</p>`;
+            } else if (['doc', 'docx'].includes(ext)) {
+                modalContent.innerHTML = `<p>Preview not available for ${originalname}. <a href="https://air-exchange.onrender.com/download/${filename}" download><i class="fas fa-download" style="color: white;"></i> Download instead</a>.</p>`;
+            } else if (['pdf'].includes(ext)) {
+                modalContent.innerHTML = `<p>Preview not available for ${originalname}. <a href="https://air-exchange.onrender.com/download/${filename}" download><i class="fas fa-download" style="color: white;"></i> Download instead</a>.</p>`;
+            } else {
+                modalContent.innerHTML = `<p>Preview not available for ${originalname}. <a href="https://air-exchange.onrender.com/download/${filename}" download><i class="fas fa-download" style="color: white;"></i> Download instead</a>.</p>`;
+            }
+            fileModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            fileModal.style.display = 'none';
+            modalContent.innerHTML = '';
+        }
+
+        function showNotification(message, type) {
+            notification.textContent = message;
+            notification.className = `airxchange-notification ${type === 'add' ? 'add' : 'remove'}`;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
+            // Ensure visibility on mobile by forcing focus or checking scroll
+            if (window.innerWidth <= 768) {
+                notification.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFileUpload(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files));
+        
+        textEditor.addEventListener('input', handleTextInput);
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.airxchange-tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`airxchange-${tabName}Tab`).classList.add('active');
+            document.querySelectorAll('.airxchange-tab').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.airxchange-tab[onclick*="${tabName}"]`).classList.add('active');
+        }
     </script>
 </body>
 </html>

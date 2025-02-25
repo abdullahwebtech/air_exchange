@@ -4,76 +4,119 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const socketIo = require('socket.io');
-const cors = require('cors'); // CORS support
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allow all origins
+    origin: "*",
     methods: ["GET", "POST", "DELETE"]
   }
 });
 
-// Enable CORS and JSON parsing
-app.use(cors());
-app.use(express.json());
-
-// Ensure uploads directory exists
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// Configure file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// Global state
-let globalText = '';
-let files = [];
+const roomData = new Map(); // Map<room, { text: string, files: Array, expiry: number, users: Set<string> }>
 
-// Socket.io connections
 io.on('connection', (socket) => {
-  console.log('✅ New client connected:', socket.id);
+  let room;
 
-  // Send initial state
-  socket.emit('init', { text: globalText, files });
+  socket.on('joinRoom', (roomId) => {
+    room = `wifi-${roomId}`;
+    socket.join(room);
+    console.log(`✅ ${socket.id} joined room: ${room}`);
 
-  // Handle text updates
-  socket.on('textUpdate', (text) => {
-    globalText = text;
-    socket.broadcast.emit('textUpdate', text);
+    if (!roomData.has(room)) {
+      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set() });
+    }
+    const data = roomData.get(room);
+    data.users.add(socket.id); // Track connected user
+    const userCount = data.users.size || 1; // Default to 1 if no users (initialization)
+    io.to(room).emit('userCountUpdate', userCount); // Notify all users of count change
+    socket.emit('init', data);
+    console.log(`Sent init data to ${socket.id}:`, data); // Debug log
   });
 
-  // Handle file deletion
+  socket.on('textUpdate', (formattedText) => {
+    if (!room) return;
+    roomData.get(room).text = formattedText; // Store formatted text (HTML)
+    roomData.get(room).lastTextUpdate = Date.now(); // Track last text update for expiry
+    socket.to(room).emit('textUpdate', formattedText); // Broadcast formatted text
+    console.log(`Formatted text updated in ${room}: ${formattedText.slice(0, 20)}...`); // Debug log
+  });
+
   socket.on('deleteFile', (filename) => {
-    files = files.filter(file => file.filename !== filename);
-    io.emit('fileDeleted', filename);
+    if (!room) return;
+    const roomFiles = roomData.get(room).files;
+    roomData.get(room).files = roomFiles.filter(file => file.filename !== filename);
+    io.to(room).emit('fileDeleted', filename);
+    console.log(`File deleted in ${room}: ${filename}`); // Debug log
   });
 
-  // Handle deleting all files
   socket.on('deleteAllFiles', () => {
-    files = [];
-    io.emit('allFilesDeleted');
+    if (!room) return;
+    roomData.get(room).files = [];
+    io.to(room).emit('allFilesDeleted');
+    io.to(room).emit('notification', { message: 'All files deleted' });
+    console.log(`All files deleted in ${room}`); // Debug log
   });
 
-  // Handle clearing text
   socket.on('clearText', () => {
-    globalText = '';
-    io.emit('textUpdate', '');
+    if (!room) return;
+    roomData.get(room).text = '';
+    io.to(room).emit('clearText');
+    console.log(`Text cleared in ${room}`); // Debug log
+  });
+
+  socket.on('setExpiry', ({ roomId, expiryTime }) => {
+    const room = `wifi-${roomId}`;
+    if (roomData.has(room)) {
+      roomData.get(room).expiry = expiryTime;
+      io.to(room).emit('expiryUpdate', expiryTime); // Broadcast to all in room
+      console.log(`Expiry set for ${room}: ${expiryTime}ms`); // Debug log
+    }
+  });
+
+  socket.on('cursorUpdate', (position) => {
+    if (!room) return;
+    socket.to(room).emit('cursorUpdate', { id: socket.id, position });
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Client disconnected:', socket.id);
+    if (room && roomData.has(room)) {
+      const data = roomData.get(room);
+      data.users.delete(socket.id); // Remove user from tracking
+      const userCount = data.users.size || 0; // Ensure count is at least 0
+      io.to(room).emit('userCountUpdate', userCount); // Notify all users of count change
+      console.log(`❌ ${socket.id} disconnected from room: ${room}`);
+      if (data.users.size === 0 && data.files.length === 0 && data.text === '') {
+        roomData.delete(room);
+        console.log(`🧹 Cleaned up room: ${room}`);
+      }
+    }
   });
 });
 
-// File upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const roomId = req.headers['x-room-id'];
+    if (!roomId) return res.status(400).json({ error: 'Room ID required' });
+
+    const room = `wifi-${roomId}`;
+    if (!roomData.has(room)) {
+      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set() });
+    }
 
     const fileData = {
       filename: req.file.filename,
@@ -82,20 +125,20 @@ app.post('/upload', upload.single('file'), (req, res) => {
       url: `https://air-exchange.onrender.com/uploads/${req.file.filename}`
     };
 
-    files.push(fileData);
-    io.emit('newFile', fileData); // Notify clients
+    roomData.get(room).files.push(fileData);
+    io.to(room).emit('newFile', fileData);
+    io.to(room).emit('notification', { message: `New file uploaded: ${fileData.originalname}` });
     res.status(200).json({ success: true });
+    console.log(`File uploaded in ${room}: ${fileData.originalname}`); // Debug log
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
 
-// File download endpoint
 app.get('/download/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadDir, filename);
-
   if (fs.existsSync(filePath)) {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.sendFile(filePath);
@@ -104,63 +147,74 @@ app.get('/download/:filename', (req, res) => {
   }
 });
 
-// Delete single file endpoint
-app.delete('/delete-file/:filename', (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const filePath = path.join(uploadDir, filename);
-
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      files = files.filter(file => file.filename !== filename);
-      io.emit('fileDeleted', filename);
-      res.status(200).json({ success: true });
-    } else {
-      res.status(404).json({ error: 'File not found' });
-    }
-  } catch (error) {
-    console.error('Delete file error:', error);
-    res.status(500).json({ error: 'Delete failed' });
-  }
-});
-
-// Delete all files endpoint
 app.delete('/delete-all', (req, res) => {
   try {
-    files.forEach(file => {
-      const filePath = path.join(uploadDir, file.filename);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    });
-    
-    files = [];
-    io.emit('allFilesDeleted');
+    const roomId = req.headers['x-room-id'];
+    if (!roomId) return res.status(400).json({ error: 'Room ID required' });
+    const room = `wifi-${roomId}`;
+    if (!roomData.has(room)) return res.status(404).json({ error: 'Room not found' });
+
+    roomData.get(room).files.forEach(file => fs.unlinkSync(path.join(uploadDir, file.filename)));
+    roomData.get(room).files = [];
+    io.to(room).emit('allFilesDeleted');
+    io.to(room).emit('notification', { message: 'All files deleted' });
     res.status(200).json({ success: true });
+    console.log(`All files deleted in ${room}`); // Debug log
   } catch (error) {
     console.error('Delete all error:', error);
     res.status(500).json({ error: 'Delete all failed' });
   }
 });
 
-// Auto-clean old files every 30 minutes
+app.delete('/delete-file/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const roomId = req.headers['x-room-id'];
+    if (!roomId) return res.status(400).json({ error: 'Room ID required' });
+    const room = `wifi-${roomId}`;
+    if (!roomData.has(room)) return res.status(404).json({ error: 'Room not found' });
+
+    fs.unlinkSync(path.join(uploadDir, filename));
+    roomData.get(room).files = roomData.get(room).files.filter(file => file.filename !== filename);
+    io.to(room).emit('fileDeleted', filename);
+    io.to(room).emit('notification', { message: `File deleted: ${filename}` });
+    res.status(200).json({ success: true });
+    console.log(`File deleted in ${room}: ${filename}`); // Debug log
+  } catch (error) {
+    console.error('Delete file error:', error);
+    res.status(500).json({ error: 'Delete file failed' });
+  }
+});
+
+// Cleanup based on room-specific expiry
 setInterval(() => {
   const now = Date.now();
-  files = files.filter(file => {
-    if (now - file.timestamp > 1800000) { // 30 minutes
-      const filePath = path.join(uploadDir, file.filename);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      return false;
+  roomData.forEach((data, room) => {
+    const expiryTime = data.expiry || 1800000; // Fallback to 30 min if not set
+    if (data.files.some(file => now - file.timestamp > expiryTime) || (data.text && now - (data.lastTextUpdate || 0) > expiryTime)) {
+      data.files = data.files.filter(file => now - file.timestamp <= expiryTime);
+      if (now - (data.lastTextUpdate || 0) > expiryTime) {
+        data.text = '';
+        io.to(room).emit('clearText'); // Trigger fade-out animation for text
+      }
+      if (data.files.length === 0 && data.text === '' && data.users.size === 0) {
+        roomData.delete(room);
+        console.log(`🧹 Cleaned up room: ${room}`);
+      } else {
+        io.to(room).emit('init', data); // Update all clients
+      }
     }
-    return true;
   });
-}, 1800000);
+}, 60000); // Check every minute
 
-// Serve uploaded files
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
-
 // Start server
 const PORT = process.env.PORT || 3000; // Render ke liye dynamic port use karega
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at https://air-exchange.onrender.com`);
 });
+
+
+
