@@ -25,33 +25,33 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-const roomData = new Map(); // Map<room, { text: string, files: Array, expiry: number, users: Set<string> }>
+const roomData = new Map();
 
 io.on('connection', (socket) => {
   let room;
 
-  socket.on('joinRoom', (roomId) => {
+  socket.on('joinRoom', ({ roomId, clientId }) => {
     room = `wifi-${roomId}`;
     socket.join(room);
-    console.log(`✅ ${socket.id} joined room: ${room}`);
+    console.log(`✅ ${clientId} joined room: ${room}`);
 
     if (!roomData.has(room)) {
-      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set() });
+      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set(), savedTexts: [] });
     }
     const data = roomData.get(room);
-    data.users.add(socket.id); // Track connected user
-    const userCount = data.users.size || 1; // Default to 1 if no users (initialization)
-    io.to(room).emit('userCountUpdate', userCount); // Notify all users of count change
+    data.users.add(clientId);
+    const userCount = data.users.size;
+    io.to(room).emit('userCountUpdate', userCount);
     socket.emit('init', data);
-    console.log(`Sent init data to ${socket.id}:`, data); // Debug log
+    console.log(`Sent init data to ${clientId}:`, { ...data, users: data.users.size });
   });
 
   socket.on('textUpdate', (formattedText) => {
     if (!room) return;
-    roomData.get(room).text = formattedText; // Store formatted text (HTML)
-    roomData.get(room).lastTextUpdate = Date.now(); // Track last text update for expiry
-    socket.to(room).emit('textUpdate', formattedText); // Broadcast formatted text
-    console.log(`Formatted text updated in ${room}: ${formattedText.slice(0, 20)}...`); // Debug log
+    roomData.get(room).text = formattedText;
+    roomData.get(room).lastTextUpdate = Date.now();
+    socket.to(room).emit('textUpdate', formattedText);
+    console.log(`Formatted text updated in ${room}: ${formattedText.slice(0, 20)}...`);
   });
 
   socket.on('deleteFile', (filename) => {
@@ -59,7 +59,7 @@ io.on('connection', (socket) => {
     const roomFiles = roomData.get(room).files;
     roomData.get(room).files = roomFiles.filter(file => file.filename !== filename);
     io.to(room).emit('fileDeleted', filename);
-    console.log(`File deleted in ${room}: ${filename}`); // Debug log
+    console.log(`File deleted in ${room}: ${filename}`);
   });
 
   socket.on('deleteAllFiles', () => {
@@ -67,22 +67,22 @@ io.on('connection', (socket) => {
     roomData.get(room).files = [];
     io.to(room).emit('allFilesDeleted');
     io.to(room).emit('notification', { message: 'All files deleted' });
-    console.log(`All files deleted in ${room}`); // Debug log
+    console.log(`All files deleted in ${room}`);
   });
 
   socket.on('clearText', () => {
     if (!room) return;
     roomData.get(room).text = '';
     io.to(room).emit('clearText');
-    console.log(`Text cleared in ${room}`); // Debug log
+    console.log(`Text cleared in ${room}`);
   });
 
   socket.on('setExpiry', ({ roomId, expiryTime }) => {
     const room = `wifi-${roomId}`;
     if (roomData.has(room)) {
       roomData.get(room).expiry = expiryTime;
-      io.to(room).emit('expiryUpdate', expiryTime); // Broadcast to all in room
-      console.log(`Expiry set for ${room}: ${expiryTime}ms`); // Debug log
+      io.to(room).emit('expiryUpdate', expiryTime);
+      console.log(`Expiry set for ${room}: ${expiryTime}ms`);
     }
   });
 
@@ -91,14 +91,28 @@ io.on('connection', (socket) => {
     socket.to(room).emit('cursorUpdate', { id: socket.id, position });
   });
 
+  socket.on('saveText', (savedText) => {
+    if (!room) return;
+    roomData.get(room).savedTexts.push(savedText);
+    io.to(room).emit('savedText', savedText);
+    console.log(`Text saved in ${room}: ${savedText.text.slice(0, 20)}...`);
+  });
+
+  socket.on('deleteSavedText', (index) => {
+    if (!room) return;
+    roomData.get(room).savedTexts.splice(index, 1);
+    io.to(room).emit('deleteSavedText', index);
+    console.log(`Text deleted from ${room} at index ${index}`);
+  });
+
   socket.on('disconnect', () => {
     if (room && roomData.has(room)) {
       const data = roomData.get(room);
-      data.users.delete(socket.id); // Remove user from tracking
-      const userCount = data.users.size || 0; // Ensure count is at least 0
-      io.to(room).emit('userCountUpdate', userCount); // Notify all users of count change
+      data.users.delete(socket.id);
+      const userCount = data.users.size;
+      io.to(room).emit('userCountUpdate', userCount);
       console.log(`❌ ${socket.id} disconnected from room: ${room}`);
-      if (data.users.size === 0 && data.files.length === 0 && data.text === '') {
+      if (data.users.size === 0 && data.files.length === 0 && data.text === '' && data.savedTexts.length === 0) {
         roomData.delete(room);
         console.log(`🧹 Cleaned up room: ${room}`);
       }
@@ -115,7 +129,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
 
     const room = `wifi-${roomId}`;
     if (!roomData.has(room)) {
-      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set() });
+      roomData.set(room, { text: '', files: [], expiry: 1800000, users: new Set(), savedTexts: [] });
     }
 
     const fileData = {
@@ -129,7 +143,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     io.to(room).emit('newFile', fileData);
     io.to(room).emit('notification', { message: `New file uploaded: ${fileData.originalname}` });
     res.status(200).json({ success: true });
-    console.log(`File uploaded in ${room}: ${fileData.originalname}`); // Debug log
+    console.log(`File uploaded in ${room}: ${fileData.originalname}`);
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Upload failed' });
@@ -159,7 +173,7 @@ app.delete('/delete-all', (req, res) => {
     io.to(room).emit('allFilesDeleted');
     io.to(room).emit('notification', { message: 'All files deleted' });
     res.status(200).json({ success: true });
-    console.log(`All files deleted in ${room}`); // Debug log
+    console.log(`All files deleted in ${room}`);
   } catch (error) {
     console.error('Delete all error:', error);
     res.status(500).json({ error: 'Delete all failed' });
@@ -179,33 +193,35 @@ app.delete('/delete-file/:filename', (req, res) => {
     io.to(room).emit('fileDeleted', filename);
     io.to(room).emit('notification', { message: `File deleted: ${filename}` });
     res.status(200).json({ success: true });
-    console.log(`File deleted in ${room}: ${filename}`); // Debug log
+    console.log(`File deleted in ${room}: ${filename}`);
   } catch (error) {
     console.error('Delete file error:', error);
     res.status(500).json({ error: 'Delete file failed' });
   }
 });
 
-// Cleanup based on room-specific expiry
 setInterval(() => {
   const now = Date.now();
   roomData.forEach((data, room) => {
-    const expiryTime = data.expiry || 1800000; // Fallback to 30 min if not set
-    if (data.files.some(file => now - file.timestamp > expiryTime) || (data.text && now - (data.lastTextUpdate || 0) > expiryTime)) {
+    const expiryTime = data.expiry || 1800000;
+    if (data.files.some(file => now - file.timestamp > expiryTime) || 
+        (data.text && now - (data.lastTextUpdate || 0) > expiryTime) || 
+        data.savedTexts.some(text => now - text.timestamp > text.expiry)) {
       data.files = data.files.filter(file => now - file.timestamp <= expiryTime);
+      data.savedTexts = data.savedTexts.filter(text => now - text.timestamp <= text.expiry);
       if (now - (data.lastTextUpdate || 0) > expiryTime) {
         data.text = '';
-        io.to(room).emit('clearText'); // Trigger fade-out animation for text
+        io.to(room).emit('clearText');
       }
-      if (data.files.length === 0 && data.text === '' && data.users.size === 0) {
+      if (data.files.length === 0 && data.text === '' && data.users.size === 0 && data.savedTexts.length === 0) {
         roomData.delete(room);
         console.log(`🧹 Cleaned up room: ${room}`);
       } else {
-        io.to(room).emit('init', data); // Update all clients
+        io.to(room).emit('init', data);
       }
     }
   });
-}, 60000); // Check every minute
+}, 60000);
 
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -218,3 +234,4 @@ server.listen(PORT, () => {
 
 
 
+// https://air-exchange.onrender.com

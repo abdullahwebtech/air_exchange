@@ -15,17 +15,17 @@
             --airxchange-border: #1e90ff;
             --airxchange-card-bg: #fff;
             --airxchange-shadow: rgba(0,0,0,0.15);
-            --airxchange-success: #28a745; /* Green for additions */
-            --airxchange-error: #dc3545;   /* Red for deletions */
+            --airxchange-success: #28a745;
+            --airxchange-error: #dc3545;
             --airxchange-accent: #ff6f61;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; color: var(--airxchange-text); }
-        body { background-color: var(--airxchange-bg); }
+        
         .airxchange-container { 
             max-width: 900px; margin: 20px auto; padding: 20px; 
-            background: var(--airxchange-bg); border-radius: 15px; 
+            background: #cee5fc; border-radius: 15px; 
             box-shadow: 0 4px 12px var(--airxchange-shadow); 
             animation: airxchange-fadeIn 0.5s ease-in; 
+            position: relative;
         }
         .airxchange-tabs { 
             display: flex; margin-bottom: 20px; gap: 10px; 
@@ -82,8 +82,8 @@
         .airxchange-btn { 
             padding: 8px 15px; border: none; border-radius: 6px; 
             cursor: pointer; background: var(--airxchange-primary); 
-            color: white; margin: 5px 0; transition: all 0.3s ease; 
-            font-size: 14px; 
+            color: white; margin: 5px 5px; transition: all 0.3s ease; 
+            font-size: 14px; min-width: 90px; 
         }
         .airxchange-btn:hover { background: var(--airxchange-primary-dark); transform: scale(1.05); }
         .airxchange-file-actions { display: flex; gap: 10px; justify-content: flex-start; margin-bottom: 15px; }
@@ -164,13 +164,67 @@
         }
         .airxclose:hover { color: var(--airxchange-primary); }
         .airxchange-notification { 
-            position: fixed; bottom: 20px; right: 20px; /* Bottom-right position */
+            position: fixed; bottom: 20px; right: 20px; 
             padding: 10px 20px; border-radius: 5px; 
             box-shadow: 0 2px 5px var(--airxchange-shadow); 
             animation: airxchange-notification 3s ease-out; display: none; z-index: 1001; 
         }
-        .airxchange-notification.add { background: var(--airxchange-success); color: white; } /* Green for additions */
-        .airxchange-notification.remove { background: var(--airxchange-error); color: white; } /* Red for deletions */
+        .airxchange-notification.add { background: var(--airxchange-success); color: white; }
+        .airxchange-notification.remove { background: var(--airxchange-error); color: white; }
+        #airxchange-userCountDisplay {
+            transition: all 0.3s ease;
+        }
+        .airxchange-user-update-animation {
+            animation: userUpdate 0.5s ease-in-out;
+        }
+        #airxchange-userIconPermanent {
+            display: inline-block;
+            animation: iconChange 0.5s ease-in-out;
+        }
+        .airxchange-saved-texts { 
+            margin-top: 15px; padding: 10px; background: var(--airxchange-card-bg); 
+            border-radius: 8px; box-shadow: 0 2px 6px var(--airxchange-shadow); 
+            display: none; 
+            animation: airxchange-slideIn 0.3s ease; 
+        }
+        .airxchange-saved-texts h3 { 
+            margin-bottom: 10px; color: var(--airxchange-primary); font-size: 16px; 
+            font-weight: bold; 
+        }
+        .airxchange-saved-text { 
+            padding: 6px; border: 1px solid var(--airxchange-border); border-radius: 5px; 
+            margin-bottom: 8px; background: rgba(30, 144, 255, 0.05); 
+            position: relative; color: var(--airxchange-text); 
+            width: fit-content; min-width: 100%; max-width: 100%; 
+            transition: max-width 0.3s ease; 
+        }
+        .airxchange-saved-text-collapsed { 
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; 
+            overflow: hidden; 
+        }
+        .airxchange-saved-text-full { 
+            white-space: pre-wrap; word-wrap: break-word; 
+            max-width: none; 
+        }
+        .airxchange-saved-text .read-more { 
+            color: var(--airxchange-primary); cursor: pointer; font-size: 12px; 
+            margin-top: 5px; display: none; /* Hidden by default, will be replaced by clickable dots */
+        }
+        .airxchange-saved-text .read-more:hover { text-decoration: underline; }
+        .airxchange-saved-text .dots { 
+            color: var(--airxchange-primary); cursor: pointer; font-size: 12px; 
+            margin-top: 5px; display: block; 
+        }
+        .airxchange-saved-text .dots:hover { text-decoration: underline; }
+        .airxchange-saved-text-actions { 
+            position: absolute; top: 6px; right: 10px; display: flex; gap: 5px; 
+            z-index: 1; 
+        }
+        .airxchange-saved-text-action-btn { 
+            cursor: pointer; font-size: 14px; color: black; 
+            transition: opacity 0.2s; 
+        }
+        .airxchange-saved-text-action-btn:hover { opacity: 0.7; }
         @keyframes airxchange-notification { 
             0% { opacity: 0; transform: translateY(20px); } 
             10% { opacity: 1; transform: translateY(0); } 
@@ -186,6 +240,16 @@
         @keyframes airxchange-pulse { 
             0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } 
         }
+        @keyframes userUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes iconChange {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
         @media (max-width: 768px) { 
             .airxchange-container { margin: 10px; padding: 15px; } 
             .airxchange-file-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } 
@@ -194,14 +258,20 @@
             .airxchange-expiry-custom-input { width: 100%; max-width: 120px; }
             .airxchange-expiry-reset-btn { width: 100%; max-width: 120px; }
             .airxchange-modal-content { max-width: 90%; max-height: 90%; }
-            .airxchange-file-actions { flex-direction: row; justify-content: flex-start; gap: 5px; } /* Horizontal on mobile */
-            .airxchange-btn { width: auto; max-width: 150px; }
+            .airxchange-file-actions { flex-direction: row; justify-content: flex-start; gap: 5px; }
+            .airxchange-btn { padding: 6px 10px; min-width: 70px; margin: 5px 2px; font-size: 12px; }
             .airxchange-notification { bottom: 10px; right: 10px; padding: 8px 15px; font-size: 12px; }
+            #airxchange-userCountDisplay { top: 5px; right: 5px; font-size: 12px; }
         }
     </style>
 </head>
 <body>
     <div class="airxchange-container">
+        <div id="airxchange-userCountDisplay" style="position: absolute; top: 10px; right: 10px; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+            <span id="airxchange-userIconPermanent"><i class="fas fa-user" style="color: black;"></i></span>
+            <span id="airxchange-userCountText">0 users collaborating</span>
+            <span id="airxchange-userIcon" style="font-size: 16px;"></span>
+        </div>
         <h1 style="text-align: center; margin-bottom: 10px;">AirXchange <i class="fas fa-rocket" style="color: var(--airxchange-primary); font-size: 20px;"></i></h1>
         <div class="airxchange-expiry-section">
             <label>Data expires in:</label>
@@ -215,39 +285,44 @@
                 </select>
                 <input type="number" id="airxchange-customInput" class="airxchange-expiry-custom-input" 
                        placeholder="Minutes" min="1" onchange="setCustomExpiry()">
-                <button class="airxchange-expiry-reset-btn" onclick="resetExpiry()"><i class="fas fa-undo"></i> Reset</button>
+                <button class="airxchange-expiry-reset-btn" onclick="resetExpiry()"><i class="fas fa-undo" style="color: white;"></i> Reset</button>
             </div>
         </div>
         
         <div class="airxchange-tabs">
-            <div class="airxchange-tab active" onclick="switchTab('text')"><i class="fas fa-file-alt"></i> Text</div>
-            <div class="airxchange-tab" onclick="switchTab('file')"><i class="fas fa-folder"></i> Files</div>
+            <div class="airxchange-tab active" onclick="switchTab('text')"><i class="fas fa-file-alt" style="color: white;"></i> Text</div>
+            <div class="airxchange-tab" onclick="switchTab('file')"><i class="fas fa-folder" style="color: white;"></i> Files</div>
         </div>
 
         <div id="airxchange-textTab" class="airxchange-tab-content active">
             <textarea class="airxchange-text-editor" placeholder="Start typing..." oninput="handleTextInput()"></textarea>
-            <div style="text-align: center">
-                <button class="airxchange-btn" onclick="saveText()"><i class="fas fa-save"></i> Save</button>
-                <button class="airxchange-btn" onclick="clearText()"><i class="fas fa-trash"></i> Clear</button>
-                <button class="airxchange-btn" onclick="copyText()"><i class="far fa-copy"></i> Copy</button>
+            <div style="text-align: center; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px;">
+                <button class="airxchange-btn" onclick="downloadText()"><i class="fas fa-download" style="color: white;"></i> Download</button>
+                <button class="airxchange-btn" onclick="saveTextForExpiry()"><i class="fas fa-save" style="color: white;"></i> Save Text</button>
+                <button class="airxchange-btn" onclick="copyText()"><i class="far fa-copy" style="color: white;"></i> Copy</button>
+                <button class="airxchange-btn" onclick="clearText()"><i class="fas fa-trash" style="color: white;"></i> Clear</button>
+            </div>
+            <div id="airxchange-saved-texts" class="airxchange-saved-texts">
+                <h3>Saved Texts</h3>
+                <div id="airxchange-saved-texts-list"></div>
             </div>
         </div>
 
         <div id="airxchange-fileTab" class="airxchange-tab-content">
             <div class="airxchange-file-actions">
                 <button class="airxchange-btn airxchange-download-all" onclick="downloadAllFiles()">
-                    <i class="fas fa-download"></i> Download All
+                    <i class="fas fa-download" style="color: white;"></i> Download All
                 </button>
                 <button class="airxchange-btn" onclick="deleteAllFiles()">
-                    <i class="fas fa-trash"></i> Delete All
+                    <i class="fas fa-trash" style="color: white;"></i> Delete All
                 </button>
             </div>
             <div class="airxchange-file-grid" id="airxchange-fileGrid"></div>
             <div class="airxchange-file-upload-section" id="airxchange-dropZone">
-                <p><i class="fas fa-cloud-upload-alt"></i> Drag & drop files or click to upload multiple files</p>
+                <p><i class="fas fa-cloud-upload-alt" style="color: black;"></i> Drag & drop files or click to upload multiple files</p>
                 <input type="file" id="airxchange-fileInput" multiple hidden>
                 <button class="airxchange-btn" onclick="document.getElementById('airxchange-fileInput').click()">
-                    <i class="fas fa-upload"></i> Choose Files
+                    <i class="fas fa-upload" style="color: white;"></i> Choose Files
                 </button>
                 <div id="airxchange-progressContainer" class="airxchange-progress-container"></div>
                 <div id="airxchange-downloadProgress" class="airxchange-progress-container" style="display: none;">
@@ -262,7 +337,7 @@
 
     <div class="airxchange-modal" id="airxchange-fileModal">
         <div class="airxchange-modal-content">
-            <span class="airxclose" onclick="closeModal()"><i class="fas fa-times"></i></span>
+            <span class="airxclose" onclick="closeModal()"><i class="fas fa-times" style="color: red;"></i></span>
             <div id="airxchange-modalContent"></div>
         </div>
     </div>
@@ -271,7 +346,7 @@
 
     <script src="https://air-exchange.onrender.com/socket.io/socket.io.js"></script>
     <script>
-        const socket = io('https://air-exchange.onrender.com');
+        const socket = io('https://air-exchange.onrender.com', { forceNew: true });
         const textEditor = document.querySelector('.airxchange-text-editor');
         const fileInput = document.getElementById('airxchange-fileInput');
         const fileGrid = document.getElementById('airxchange-fileGrid');
@@ -286,67 +361,76 @@
         const fileModal = document.getElementById('airxchange-fileModal');
         const modalContent = document.getElementById('airxchange-modalContent');
         const notification = document.getElementById('airxchange-notification');
+        const savedTextsContainer = document.getElementById('airxchange-saved-texts');
+        const savedTextsList = document.getElementById('airxchange-saved-texts-list');
         let files = [];
         let roomId = null;
-        let expiryTime = 1800000; // Default 30 minutes in ms
-        let cursors = new Map(); // Track cursors by socket.id
+        let expiryTime = 1800000;
+        let cursors = new Map();
+        let currentUserCount = 0;
+        let savedTexts = [];
 
         // WebRTC setup
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         const peerConnection = new RTCPeerConnection(rtcConfig);
 
-        peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                const candidate = event.candidate.candidate;
-                const localIpMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
-                if (localIpMatch) {
-                    const localIp = localIpMatch[1];
-                    roomId = localIp.split('.').slice(0, 3).join('.');
-                    socket.emit('joinRoom', roomId);
-                    console.log(`Joined room based on local IP: ${roomId}`);
+        socket.on('connect', () => {
+            console.log('Socket connected:', socket.id);
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const candidate = event.candidate.candidate;
+                    const localIpMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                    if (localIpMatch) {
+                        const localIp = localIpMatch[1];
+                        roomId = localIp.split('.').slice(0, 3).join('.');
+                        socket.emit('joinRoom', { roomId, clientId: socket.id });
+                        console.log(`Joined room based on local IP: ${roomId}`);
+                    }
                 }
-            }
-        };
+            };
 
-        peerConnection.createDataChannel('discovery');
-        peerConnection.createOffer()
-            .then(offer => peerConnection.setLocalDescription(offer))
-            .catch(err => console.error('WebRTC error:', err));
+            peerConnection.createDataChannel('discovery');
+            peerConnection.createOffer()
+                .then(offer => peerConnection.setLocalDescription(offer))
+                .catch(err => console.error('WebRTC error:', err));
+        });
 
         socket.on('init', (data) => {
-            textEditor.value = data.text; // Restore plain text
+            textEditor.value = data.text;
             files = data.files;
-            expiryTime = data.expiry || 1800000; // Sync expiry from server
+            expiryTime = data.expiry || 1800000;
+            savedTexts = data.savedTexts || [];
             updateExpiryUI();
             updateFileGrid();
-            updateAddNewCard(); // Update "Add New" card position
+            updateAddNewCard();
+            updateSavedTexts();
         });
 
         socket.on('textUpdate', (text) => {
-            textEditor.value = text; // Sync plain text
-            textEditor.classList.remove('fade-out'); // Reset fade if updated
-            updateCursors(); // Update cursor positions after text changes
+            textEditor.value = text;
+            textEditor.classList.remove('fade-out');
+            updateCursors();
         });
 
         socket.on('newFile', (file) => {
             files.push(file);
             updateFileGrid();
             showNotification(`New file uploaded: ${file.originalname}`, 'add');
-            updateAddNewCard(); // Update "Add New" card position
+            updateAddNewCard();
         });
 
         socket.on('fileDeleted', (filename) => {
             files = files.filter(file => file.filename !== filename);
             updateFileGrid();
             showNotification(`File deleted: ${filename}`, 'remove');
-            updateAddNewCard(); // Update "Add New" card position
+            updateAddNewCard();
         });
 
         socket.on('allFilesDeleted', () => {
             files = [];
             updateFileGrid();
             showNotification('All files deleted', 'remove');
-            updateAddNewCard(); // Update "Add New" card position
+            updateAddNewCard();
         });
 
         socket.on('clearText', () => {
@@ -354,8 +438,8 @@
             setTimeout(() => {
                 textEditor.value = '';
                 textEditor.classList.remove('fade-out');
-                updateCursors(); // Clear cursors after text reset
-            }, 500); // Match CSS transition duration
+                updateCursors();
+            }, 500);
         });
 
         socket.on('expiryUpdate', (newExpiry) => {
@@ -368,19 +452,45 @@
             updateCursors();
         });
 
+        socket.on('userCountUpdate', (count) => {
+            const previousCount = currentUserCount;
+            updateUserCount(count, count > previousCount ? 'add' : (count < previousCount ? 'remove' : null));
+        });
+
+        socket.on('savedText', (savedText) => {
+            savedTexts.push(savedText);
+            updateSavedTexts();
+        });
+
+        socket.on('deleteSavedText', (index) => {
+            savedTexts.splice(index, 1);
+            updateSavedTexts();
+        });
+
         function handleTextInput() {
             if (!roomId) return;
-            socket.emit('textUpdate', textEditor.value); // Emit plain text
+            socket.emit('textUpdate', textEditor.value);
             socket.emit('cursorUpdate', getCursorPosition());
         }
 
-        function saveText() {
+        function downloadText() {
             const blob = new Blob([textEditor.value], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `airxchange-${Date.now()}.txt`;
             a.click();
+        }
+
+        function saveTextForExpiry() {
+            if (!roomId || !textEditor.value.trim()) return;
+            const savedText = {
+                text: textEditor.value,
+                timestamp: Date.now(),
+                expiry: expiryTime
+            };
+            socket.emit('saveText', savedText);
+            showNotification('Text saved!', 'add');
         }
 
         function clearText() {
@@ -391,9 +501,9 @@
                     textEditor.value = '';
                     textEditor.classList.remove('fade-out');
                     socket.emit('clearText');
-                    cursors.clear(); // Clear all cursors on clear
+                    cursors.clear();
                     updateCursors();
-                }, 500); // Match CSS transition duration
+                }, 500);
             }
         }
 
@@ -407,10 +517,13 @@
             const ext = fileName.split('.').pop().toLowerCase();
             const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'heif', 'heic', 'raw', 'psd', 'eps', 'ai', 'ico', 'avif', 'dng', 'cr2', 'nef', 'orf'];
             if (imageExtensions.includes(ext)) return '<img class="airxchange-file-preview" src="https://air-exchange.onrender.com/uploads/' + fileName + '">';
-            if (['xls', 'xlsx'].includes(ext)) return '<i class="fas fa-table" style="color: white;"></i>';
-            if (['doc', 'docx'].includes(ext)) return '<i class="fas fa-file-alt" style="color: white;"></i>';
-            if (['pdf'].includes(ext)) return '<i class="fas fa-file-pdf" style="color: white;"></i>';
-            return '<i class="fas fa-file" style="color: white;"></i>';
+            if (['xls', 'xlsx'].includes(ext)) return '<i class="fas fa-file-excel" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            if (['CSV'].includes(ext)) return '<i class="fas fa-file-csv" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            if (['doc', 'docx'].includes(ext)) return '<i class="fas fa-file-word" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            if (['mp4', 'webm', 'ogg'].includes(ext)) return '<i class="fa-solid fa-video" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            if (['zip'].includes(ext)) return '<i class="fas fa-file-archive" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            if (['pdf'].includes(ext)) return '<i class="fas fa-file-pdf" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
+            return '<i class="fas fa-file" style="font-size: 48px;color: black; margin-bottom: 15px;"></i>';
         }
 
         function updateFileGrid() {
@@ -431,27 +544,24 @@
                         <div class="airxchange-file-actions-icons">
                             <a href="https://air-exchange.onrender.com/download/${file.filename}" download 
                                class="airxchange-file-action-btn" title="Download">
-                                <i class="fas fa-download"></i>
+                                <i class="fas fa-download" style="color: black;"></i>
                             </a>
                             <span class="airxchange-file-action-btn" title="Delete" 
                                   onclick="deleteSingleFile('${file.filename}'); event.stopPropagation();">
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-trash" style="color: black;"></i>
                             </span>
                         </div>
                     </div>
                 `;
             });
-            updateAddNewCard(); // Add "Add New" card after files, ensuring no duplication
+            updateAddNewCard();
         }
 
         function updateAddNewCard() {
-            // Remove any existing "Add New" card to prevent duplication
             const existingAddCard = fileGrid.querySelector('.airxchange-add-file-card');
             if (existingAddCard) {
                 existingAddCard.remove();
             }
-
-            // Add "Add New" card only if there are files
             if (files.length > 0) {
                 const addNewCard = `
                     <div class="airxchange-add-file-card" onclick="document.getElementById('airxchange-fileInput').click()">
@@ -462,6 +572,7 @@
                 fileGrid.innerHTML += addNewCard;
             }
         }
+
         function handleFileUpload(fileList) {
             if (!roomId) return;
             if (!fileList || fileList.length === 0) return;
@@ -475,7 +586,7 @@
                     <div class="airxchange-progress-bar">
                         <div class="airxchange-progress-fill" id="progressFill-${fileId}"></div>
                     </div>
-                    <div class="airxchange-success-tick" id="successTick-${fileId}"><i class="fas fa-check"></i></div>
+                    <div class="airxchange-success-tick" id="successTick-${fileId}"><i class="fas fa-check" style="color: white;"></i></div>
                 `;
                 progressContainer.appendChild(progressDiv);
 
@@ -581,21 +692,15 @@
                                 a.download = `AirXchange_Files_${Date.now()}.zip`;
                                 a.click();
                                 downloadProgress.style.display = 'none';
-                                downloadProgressText.textContent = 'Downloading... 0%';
-                                downloadProgressFill.style.width = '0%';
                             }).catch(err => {
                                 alert('Download failed: ' + err.message);
                                 downloadProgress.style.display = 'none';
-                                downloadProgressText.textContent = 'Downloading... 0%';
-                                downloadProgressFill.style.width = '0%';
                             });
                         }
                     })
                     .catch(err => {
                         alert('Download failed for ' + file.originalname + ': ' + err.message);
                         downloadProgress.style.display = 'none';
-                        downloadProgressText.textContent = 'Downloading... 0%';
-                        downloadProgressFill.style.width = '0%';
                     });
             };
 
@@ -633,37 +738,38 @@
                 expiryTime = parseInt(value);
                 if (roomId) {
                     socket.emit('setExpiry', { roomId, expiryTime });
-                    socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+                    socket.to(roomId).emit('expiryUpdate', expiryTime);
                 }
             }
-            updateExpiryUI(); // Ensure UI reflects the change
+            updateExpiryUI();
         }
+
         function setCustomExpiry() {
             const minutes = parseInt(customInput.value) || 0;
             if (minutes >= 1) {
                 expiryTime = minutes * 60 * 1000;
                 if (roomId) {
                     socket.emit('setExpiry', { roomId, expiryTime });
-                    socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+                    socket.to(roomId).emit('expiryUpdate', expiryTime);
                 }
                 customInput.style.display = 'none';
-                customInput.value = ''; // Clear input
+                customInput.value = '';
             } else {
                 alert('Please enter a valid time (minimum 1 minute)');
             }
-            updateExpiryUI(); // Ensure UI reflects the change
+            updateExpiryUI();
         }
 
         function resetExpiry() {
-            expiryTime = 1800000; // Reset to 30 minutes
+            expiryTime = 1800000;
             expirySelect.value = '1800000';
             customInput.style.display = 'none';
             customInput.value = '';
             if (roomId) {
                 socket.emit('setExpiry', { roomId, expiryTime });
-                socket.to(roomId).emit('expiryUpdate', expiryTime); // Sync to others
+                socket.to(roomId).emit('expiryUpdate', expiryTime);
             }
-            updateExpiryUI(); // Ensure UI reflects the change
+            updateExpiryUI();
         }
 
         function updateExpiryUI() {
@@ -681,7 +787,7 @@
             const lineHeight = parseInt(window.getComputedStyle(textEditor).lineHeight) || 20;
             const line = textEditor.value.substr(0, start).split('\n').length - 1;
             const charInLine = start - textEditor.value.lastIndexOf('\n', start - 1) - 1;
-            const x = charInLine * 8 + 10; // Approximate character width
+            const x = charInLine * 8 + 10;
             const y = line * lineHeight + lineHeight / 2;
             return { x: x + rect.left, y: y + rect.top };
         }
@@ -689,9 +795,8 @@
         function updateCursors() {
             const cursorsDiv = textEditor.parentElement.querySelectorAll('.airxchange-cursor');
             cursorsDiv.forEach(cursor => cursor.remove());
-            
             cursors.forEach((position, id) => {
-                if (id !== socket.id) { // Don't show our own cursor
+                if (id !== socket.id) {
                     const cursor = document.createElement('div');
                     cursor.className = 'airxchange-cursor';
                     cursor.style.left = `${position.x}px`;
@@ -699,6 +804,117 @@
                     textEditor.parentElement.appendChild(cursor);
                 }
             });
+        }
+
+        function updateUserCount(count, changeType = null) {
+            const userCountText = document.getElementById('airxchange-userCountText');
+            const userIcon = document.getElementById('airxchange-userIcon');
+            const userIconPermanent = document.getElementById('airxchange-userIconPermanent');
+            const display = document.getElementById('airxchange-userCountDisplay');
+
+            const previousCount = currentUserCount;
+            currentUserCount = count;
+            userCountText.textContent = `${count} user${count === 1 ? '' : 's'} collaborating`;
+
+            let newIcon;
+            if (count === 1) {
+                newIcon = '<i class="fas fa-user" style="color: black;"></i>';
+            } else if (count === 2) {
+                newIcon = '<i class="fas fa-user-friends" style="color: black;"></i>';
+            } else if (count >= 3) {
+                newIcon = '<i class="fas fa-users" style="color: black;"></i>';
+            }
+            if (newIcon && userIconPermanent.innerHTML !== newIcon) {
+                userIconPermanent.innerHTML = newIcon;
+                userIconPermanent.classList.add('airxchange-user-update-animation');
+                setTimeout(() => {
+                    userIconPermanent.classList.remove('airxchange-user-update-animation');
+                }, 500);
+            }
+
+            if (changeType === 'add') {
+                userIcon.innerHTML = '<i class="fas fa-user-plus" style="color: black;"></i>';
+                display.classList.add('airxchange-user-update-animation');
+            } else if (changeType === 'remove') {
+                userIcon.innerHTML = '<i class="fas fa-user-minus" style="color: black;"></i>';
+                display.classList.add('airxchange-user-update-animation');
+            } else {
+                userIcon.innerHTML = '';
+            }
+
+            if (changeType) {
+                setTimeout(() => {
+                    display.classList.remove('airxchange-user-update-animation');
+                    userIcon.innerHTML = '';
+                }, 500);
+            }
+        }
+
+        function updateSavedTexts() {
+            const now = Date.now();
+            savedTexts = savedTexts.filter(text => now - text.timestamp < text.expiry);
+            if (savedTexts.length > 0) {
+                savedTextsContainer.style.display = 'block';
+                savedTextsList.innerHTML = savedTexts.map((text, index) => {
+                    const lines = text.text.split('\n');
+                    const isLong = lines.join(' ').trim().split(/\s+/).length > 30;
+                    const displayLines = isLong ? lines.slice(0, 3).join('\n') + '…' : text.text;
+                    return `
+                        <div class="airxchange-saved-text ${isLong ? 'airxchange-saved-text-collapsed' : ''}" data-full-text="${text.text}" data-index="${index}">
+                            <div class="airxchange-saved-text-content">
+                                ${displayLines}
+                                <br><small>Saved at: ${new Date(text.timestamp).toLocaleString()}</small>
+                            </div>
+                            ${isLong ? '<span class="dots" onclick="toggleReadMore(this)">…</span>' : ''}
+                            <div class="airxchange-saved-text-actions">
+                                <span class="airxchange-saved-text-action-btn" title="Copy" onclick="copySavedText(${index})">
+                                    <i class="fas fa-copy" style="color: black;"></i>
+                                </span>
+                                <span class="airxchange-saved-text-action-btn" title="Delete" onclick="deleteSavedText(${index})">
+                                    <i class="fas fa-trash" style="color: black;"></i>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                savedTextsContainer.style.display = 'none';
+            }
+        }
+
+        function toggleReadMore(element) {
+            const parent = element.parentElement;
+            const content = parent.querySelector('.airxchange-saved-text-content');
+            if (parent.classList.contains('airxchange-saved-text-collapsed')) {
+                content.innerHTML = `${parent.dataset.fullText}<br><small>Saved at: ${new Date(savedTexts[parent.dataset.index].timestamp).toLocaleString()}</small>`;
+                parent.classList.remove('airxchange-saved-text-collapsed');
+                parent.classList.add('airxchange-saved-text-full');
+                element.textContent = 'See Less';
+                parent.style.maxWidth = 'none'; // Allow full width when expanded
+            } else {
+                const lines = parent.dataset.fullText.split('\n');
+                const shortText = lines.slice(0, 3).join('\n') + '…';
+                content.innerHTML = `${shortText}<br><small>Saved at: ${new Date(savedTexts[parent.dataset.index].timestamp).toLocaleString()}</small>`;
+                parent.classList.remove('airxchange-saved-text-full');
+                parent.classList.add('airxchange-saved-text-collapsed');
+                element.textContent = '…';
+                parent.style.maxWidth = '100%'; // Reset to container width when collapsed
+            }
+        }
+
+        function copySavedText(index) {
+            const text = savedTexts[index].text;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('Text copied to clipboard!', 'add');
+            }).catch(err => {
+                alert('Failed to copy text: ' + err.message);
+            });
+        }
+
+        function deleteSavedText(index) {
+            if (!confirm('Delete this saved text permanently?')) return;
+            socket.emit('deleteSavedText', index);
+            showNotification('Text deleted!', 'remove');
         }
 
         textEditor.addEventListener('mousemove', () => {
@@ -734,7 +950,6 @@
             notification.className = `airxchange-notification ${type === 'add' ? 'add' : 'remove'}`;
             notification.style.display = 'block';
             setTimeout(() => notification.style.display = 'none', 3000);
-            // Ensure visibility on mobile by forcing focus or checking scroll
             if (window.innerWidth <= 768) {
                 notification.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
@@ -755,13 +970,15 @@
         fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files));
         
         textEditor.addEventListener('input', handleTextInput);
-
         function switchTab(tabName) {
             document.querySelectorAll('.airxchange-tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(`airxchange-${tabName}Tab`).classList.add('active');
             document.querySelectorAll('.airxchange-tab').forEach(el => el.classList.remove('active'));
             document.querySelector(`.airxchange-tab[onclick*="${tabName}"]`).classList.add('active');
         }
+
+        // Cleanup expired saved texts every minute
+        setInterval(updateSavedTexts, 60000);
     </script>
 </body>
 </html>
